@@ -1,0 +1,54 @@
+﻿@using Azure.AI.ContentSafety
+@using Services
+@inject ContentSafetyService contentSafetyService
+@inject IJSRuntime JSRuntime
+
+@page "/"
+
+
+<PageTitle>Home</PageTitle>
+
+<img id="imagePreview" />
+
+<InputFile OnChange="@LoadFile" />
+
+
+@if (result != null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Severity</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var analysis in result.CategoriesAnalysis)
+            {
+                <tr>
+                    <td>@analysis.Category</td>
+                    <td>@analysis.Severity</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private AnalyzeImageResult? result;
+
+
+    private async Task LoadFile(InputFileChangeEventArgs e)
+    {
+
+        var imageFile = e.File;
+        var resizedImage =
+            await imageFile.RequestImageFileAsync("image/jpg", 500, 500);
+        var jsImageStream = resizedImage.OpenReadStream();
+        var dotnetImageStream = new DotNetStreamReference(jsImageStream);
+        await JSRuntime.InvokeVoidAsync("setImageUsingStreaming",
+            "imagePreview", dotnetImageStream);
+
+        result = await contentSafetyService.AnalyzeImage(e.File.OpenReadStream());
+    }
+}
